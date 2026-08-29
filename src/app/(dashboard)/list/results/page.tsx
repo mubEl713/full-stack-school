@@ -8,6 +8,7 @@ import { Prisma } from "@prisma/client";
 import Image from "next/image";
 
 import { auth } from "@clerk/nextjs/server";
+import { getGradeForScore } from "@/lib/utils";
 
 type ResultList = {
   id: number;
@@ -19,6 +20,7 @@ type ResultList = {
   score: number;
   className: string;
   startTime: Date;
+  gradeLabel?: string;
 };
 
 
@@ -79,7 +81,12 @@ const renderRow = (item: ResultList) => (
   >
     <td className="flex items-center gap-4 p-4">{item.title}</td>
     <td>{item.studentName + " " + item.studentName}</td>
-    <td className="hidden md:table-cell">{item.score}</td>
+    <td className="hidden md:table-cell">
+      {item.score}
+      {item.gradeLabel && (
+        <span className="ml-2 text-xs text-gray-500">({item.gradeLabel})</span>
+      )}
+    </td>
     <td className="hidden md:table-cell">
       {item.teacherName + " " + item.teacherSurname}
     </td>
@@ -185,6 +192,10 @@ const renderRow = (item: ResultList) => (
     prisma.result.count({ where: query }),
   ]);
 
+  const gradingScales = await prisma.gradingScale.findMany({
+    orderBy: { order: "asc" },
+  });
+
   const data = dataRes.map((item) => {
     const assessment = item.exam || item.assignment;
 
@@ -202,6 +213,7 @@ const renderRow = (item: ResultList) => (
       score: item.score,
       className: assessment.lesson.class.name,
       startTime: isExam ? assessment.startTime : assessment.startDate,
+      gradeLabel: getGradeForScore(item.score, gradingScales)?.grade,
     };
   });
 

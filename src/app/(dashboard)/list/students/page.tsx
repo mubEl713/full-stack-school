@@ -75,7 +75,7 @@ const StudentListPage = async ({
         </div>
       </td>
       <td className="hidden md:table-cell">{item.username}</td>
-      <td className="hidden md:table-cell">{item.class.name[0]}</td>
+      <td className="hidden md:table-cell">{item.class.name}</td>
       <td className="hidden md:table-cell">{item.phone}</td>
       <td className="hidden md:table-cell">{item.address}</td>
       <td>

@@ -12,6 +12,30 @@ model Admin {
   username String @unique
 }
 
+model Owner {
+  id        String   @id
+  username  String   @unique
+  name      String
+  surname   String
+  email     String?  @unique
+  phone     String?  @unique
+  address   String
+  img       String?
+  createdAt DateTime @default(now())
+}
+
+model Accountant {
+  id        String   @id
+  username  String   @unique
+  name      String
+  surname   String
+  email     String?  @unique
+  phone     String?  @unique
+  address   String
+  img       String?
+  createdAt DateTime @default(now())
+}
+
 model Student {
   id          String       @id
   username    String       @unique
@@ -32,6 +56,7 @@ model Student {
   grade       Grade        @relation(fields: [gradeId], references: [id])
   attendances Attendance[]
   results     Result[]
+  payments    FeePayment[]
   birthday    DateTime
 }
 
@@ -66,16 +91,21 @@ model Parent {
 }
 
 model Grade {
-  id    Int @id @default(autoincrement())
-  level Int @unique
+  id      Int           @id @default(autoincrement())
+  section SchoolSection
+  level   Int
 
-  students Student[]
-  classess Class[]
+  students      Student[]
+  classess      Class[]
+  feeStructures FeeStructure[]
+
+  @@unique([section, level])
 }
 
 model Class {
   id       Int    @id @default(autoincrement())
   name     String @unique
+  arm      String
   capacity Int
 
   supervisorId  String?
@@ -179,9 +209,103 @@ model Announcement {
   class   Class? @relation(fields: [classId], references: [id])
 }
 
+model FeeStructure {
+  id       Int      @id @default(autoincrement())
+  name     String
+  amount   Float
+  session  String
+  term     Term
+  gradeId  Int
+  grade    Grade    @relation(fields: [gradeId], references: [id])
+  payments FeePayment[]
+  createdAt DateTime @default(now())
+
+  @@unique([gradeId, session, term])
+}
+
+model FeePayment {
+  id             Int          @id @default(autoincrement())
+  amount         Float
+  date           DateTime     @default(now())
+  method         PaymentMethod
+  notes          String?
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id])
+  feeStructureId Int
+  feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
+  recordedById   String
+  createdAt      DateTime     @default(now())
+}
+
+model Expense {
+  id           Int      @id @default(autoincrement())
+  category     String
+  description  String
+  amount       Float
+  date         DateTime @default(now())
+  recordedById String
+  createdAt    DateTime @default(now())
+}
+
+model Income {
+  id           Int      @id @default(autoincrement())
+  source       String
+  description  String
+  amount       Float
+  date         DateTime @default(now())
+  recordedById String
+  createdAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id               Int         @id @default(autoincrement())
+  action           AuditAction
+  model            String
+  recordId         String
+  performedById    String
+  performedByName  String
+  performedByRole  String
+  changes          Json?
+  createdAt        DateTime    @default(now())
+}
+
+model GradingScale {
+  id       Int    @id @default(autoincrement())
+  grade    String
+  minScore Int
+  maxScore Int
+  remark   String
+  order    Int    @unique
+}
+
+enum Term {
+  FIRST
+  SECOND
+  THIRD
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  ONLINE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
 enum UserSex {
   MALE
   FEMALE
+}
+
+enum SchoolSection {
+  PRIMARY
+  JSS
+  SSS
 }
 
 enum Day {

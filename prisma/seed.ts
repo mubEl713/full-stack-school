@@ -1,5 +1,14 @@
-import { Day, PrismaClient, UserSex } from "@prisma/client";
+import { Day, PrismaClient, SchoolSection, UserSex } from "@prisma/client";
 const prisma = new PrismaClient();
+
+const SECTION_LABEL: Record<SchoolSection, string> = {
+  PRIMARY: "Primary",
+  JSS: "JSS",
+  SSS: "SS",
+};
+
+const armsFor = (section: SchoolSection) =>
+  section === "SSS" ? ["Science", "Art", "Commercial"] : ["A", "B", "C"];
 
 async function main() {
   // ADMIN
@@ -16,24 +25,38 @@ async function main() {
     },
   });
 
-  // GRADE
-  for (let i = 1; i <= 6; i++) {
-    await prisma.grade.create({
-      data: {
-        level: i,
-      },
-    });
+  // GRADES: Primary 1-6, JSS 1-3, SS 1-3
+  const gradeDefs: { section: SchoolSection; level: number }[] = [
+    ...[1, 2, 3, 4, 5, 6].map((level) => ({ section: "PRIMARY" as SchoolSection, level })),
+    ...[1, 2, 3].map((level) => ({ section: "JSS" as SchoolSection, level })),
+    ...[1, 2, 3].map((level) => ({ section: "SSS" as SchoolSection, level })),
+  ];
+
+  const grades = [];
+  for (const def of gradeDefs) {
+    grades.push(await prisma.grade.create({ data: def }));
   }
 
-  // CLASS
-  for (let i = 1; i <= 6; i++) {
-    await prisma.class.create({
-      data: {
-        name: `${i}A`, 
-        gradeId: i, 
-        capacity: Math.floor(Math.random() * (20 - 15 + 1)) + 15,
-      },
-    });
+  // CLASSES: arms A/B/C for Primary+JSS, Science/Art/Commercial for SS
+  const classes = [];
+  for (const grade of grades) {
+    for (const arm of armsFor(grade.section)) {
+      const label = SECTION_LABEL[grade.section];
+      const name =
+        grade.section === "SSS"
+          ? `${label} ${grade.level} ${arm}`
+          : `${label} ${grade.level}${arm}`;
+      classes.push(
+        await prisma.class.create({
+          data: {
+            name,
+            arm,
+            gradeId: grade.id,
+            capacity: Math.floor(Math.random() * (35 - 20 + 1)) + 20,
+          },
+        })
+      );
+    }
   }
 
   // SUBJECT
@@ -67,8 +90,8 @@ async function main() {
         address: `Address${i}`,
         bloodType: "A+",
         sex: i % 2 === 0 ? UserSex.MALE : UserSex.FEMALE,
-        subjects: { connect: [{ id: (i % 10) + 1 }] }, 
-        classes: { connect: [{ id: (i % 6) + 1 }] }, 
+        subjects: { connect: [{ id: (i % 10) + 1 }] },
+        classes: { connect: [{ id: classes[i % classes.length].id }] },
         birthday: new Date(new Date().setFullYear(new Date().getFullYear() - 30)),
       },
     });
@@ -86,9 +109,9 @@ async function main() {
         ], 
         startTime: new Date(new Date().setHours(new Date().getHours() + 1)), 
         endTime: new Date(new Date().setHours(new Date().getHours() + 3)), 
-        subjectId: (i % 10) + 1, 
-        classId: (i % 6) + 1, 
-        teacherId: `teacher${(i % 15) + 1}`, 
+        subjectId: (i % 10) + 1,
+        classId: classes[i % classes.length].id,
+        teacherId: `teacher${(i % 15) + 1}`,
       },
     });
   }
@@ -110,10 +133,11 @@ async function main() {
 
   // STUDENT
   for (let i = 1; i <= 50; i++) {
+    const studentClass = classes[i % classes.length];
     await prisma.student.create({
       data: {
-        id: `student${i}`, 
-        username: `student${i}`, 
+        id: `student${i}`,
+        username: `student${i}`,
         name: `SName${i}`,
         surname: `SSurname ${i}`,
         email: `student${i}@example.com`,
@@ -121,9 +145,9 @@ async function main() {
         address: `Address${i}`,
         bloodType: "O-",
         sex: i % 2 === 0 ? UserSex.MALE : UserSex.FEMALE,
-        parentId: `parentId${Math.ceil(i / 2) % 25 || 25}`, 
-        gradeId: (i % 6) + 1, 
-        classId: (i % 6) + 1, 
+        parentId: `parentId${Math.ceil(i / 2) % 25 || 25}`,
+        gradeId: studentClass.gradeId,
+        classId: studentClass.id,
         birthday: new Date(new Date().setFullYear(new Date().getFullYear() - 10)),
       },
     });
@@ -183,8 +207,8 @@ async function main() {
         title: `Event ${i}`, 
         description: `Description for Event ${i}`, 
         startTime: new Date(new Date().setHours(new Date().getHours() + 1)), 
-        endTime: new Date(new Date().setHours(new Date().getHours() + 2)), 
-        classId: (i % 5) + 1, 
+        endTime: new Date(new Date().setHours(new Date().getHours() + 2)),
+        classId: classes[i % classes.length].id,
       },
     });
   }
@@ -193,12 +217,28 @@ async function main() {
   for (let i = 1; i <= 5; i++) {
     await prisma.announcement.create({
       data: {
-        title: `Announcement ${i}`, 
-        description: `Description for Announcement ${i}`, 
-        date: new Date(), 
-        classId: (i % 5) + 1, 
+        title: `Announcement ${i}`,
+        description: `Description for Announcement ${i}`,
+        date: new Date(),
+        classId: classes[i % classes.length].id,
       },
     });
+  }
+
+  // GRADING SCALE (WAEC-style default bands)
+  const gradingBands = [
+    { grade: "A1", minScore: 75, maxScore: 100, remark: "Excellent", order: 1 },
+    { grade: "B2", minScore: 70, maxScore: 74, remark: "Very Good", order: 2 },
+    { grade: "B3", minScore: 65, maxScore: 69, remark: "Good", order: 3 },
+    { grade: "C4", minScore: 60, maxScore: 64, remark: "Credit", order: 4 },
+    { grade: "C5", minScore: 55, maxScore: 59, remark: "Credit", order: 5 },
+    { grade: "C6", minScore: 50, maxScore: 54, remark: "Credit", order: 6 },
+    { grade: "D7", minScore: 45, maxScore: 49, remark: "Pass", order: 7 },
+    { grade: "E8", minScore: 40, maxScore: 44, remark: "Pass", order: 8 },
+    { grade: "F9", minScore: 0, maxScore: 39, remark: "Fail", order: 9 },
+  ];
+  for (const band of gradingBands) {
+    await prisma.gradingScale.create({ data: band });
   }
 
   console.log("Seeding completed successfully.");

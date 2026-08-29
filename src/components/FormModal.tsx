@@ -1,8 +1,22 @@
 "use client";
 
 import {
+  deleteAccountant,
+  deleteAnnouncement,
+  deleteAssignment,
+  deleteAttendance,
   deleteClass,
+  deleteEvent,
   deleteExam,
+  deleteExpense,
+  deleteFeePayment,
+  deleteFeeStructure,
+  deleteGradingScale,
+  deleteIncome,
+  deleteLesson,
+  deleteOwner,
+  deleteParent,
+  deleteResult,
   deleteStudent,
   deleteSubject,
   deleteTeacher,
@@ -21,20 +35,23 @@ const deleteActionMap = {
   teacher: deleteTeacher,
   student: deleteStudent,
   exam: deleteExam,
-// TODO: OTHER DELETE ACTIONS
-  parent: deleteSubject,
-  lesson: deleteSubject,
-  assignment: deleteSubject,
-  result: deleteSubject,
-  attendance: deleteSubject,
-  event: deleteSubject,
-  announcement: deleteSubject,
+  parent: deleteParent,
+  owner: deleteOwner,
+  accountant: deleteAccountant,
+  lesson: deleteLesson,
+  assignment: deleteAssignment,
+  result: deleteResult,
+  attendance: deleteAttendance,
+  event: deleteEvent,
+  announcement: deleteAnnouncement,
+  feeStructure: deleteFeeStructure,
+  feePayment: deleteFeePayment,
+  expense: deleteExpense,
+  income: deleteIncome,
+  gradingScale: deleteGradingScale,
 };
 
 // USE LAZY LOADING
-
-// import TeacherForm from "./forms/TeacherForm";
-// import StudentForm from "./forms/StudentForm";
 
 const TeacherForm = dynamic(() => import("./forms/TeacherForm"), {
   loading: () => <h1>Loading...</h1>,
@@ -51,7 +68,48 @@ const ClassForm = dynamic(() => import("./forms/ClassForm"), {
 const ExamForm = dynamic(() => import("./forms/ExamForm"), {
   loading: () => <h1>Loading...</h1>,
 });
-// TODO: OTHER FORMS
+const ParentForm = dynamic(() => import("./forms/ParentForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const OwnerForm = dynamic(() => import("./forms/OwnerForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const AccountantForm = dynamic(() => import("./forms/AccountantForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const LessonForm = dynamic(() => import("./forms/LessonForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const AssignmentForm = dynamic(() => import("./forms/AssignmentForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const ResultForm = dynamic(() => import("./forms/ResultForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const AttendanceForm = dynamic(() => import("./forms/AttendanceForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const EventForm = dynamic(() => import("./forms/EventForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const AnnouncementForm = dynamic(() => import("./forms/AnnouncementForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const FeeStructureForm = dynamic(() => import("./forms/FeeStructureForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const FeePaymentForm = dynamic(() => import("./forms/FeePaymentForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const ExpenseForm = dynamic(() => import("./forms/ExpenseForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const IncomeForm = dynamic(() => import("./forms/IncomeForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const GradingScaleForm = dynamic(() => import("./forms/GradingScaleForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
 
 const forms: {
   [key: string]: (
@@ -100,7 +158,118 @@ const forms: {
       setOpen={setOpen}
       relatedData={relatedData}
     />
-    // TODO OTHER LIST ITEMS
+  ),
+  parent: (setOpen, type, data, relatedData) => (
+    <ParentForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  owner: (setOpen, type, data, relatedData) => (
+    <OwnerForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  accountant: (setOpen, type, data, relatedData) => (
+    <AccountantForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  lesson: (setOpen, type, data, relatedData) => (
+    <LessonForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  assignment: (setOpen, type, data, relatedData) => (
+    <AssignmentForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  result: (setOpen, type, data, relatedData) => (
+    <ResultForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  attendance: (setOpen, type, data, relatedData) => (
+    <AttendanceForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  event: (setOpen, type, data, relatedData) => (
+    <EventForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  announcement: (setOpen, type, data, relatedData) => (
+    <AnnouncementForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  feeStructure: (setOpen, type, data, relatedData) => (
+    <FeeStructureForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  feePayment: (setOpen, type, data, relatedData) => (
+    <FeePaymentForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  expense: (setOpen, type, data, relatedData) => (
+    <ExpenseForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  income: (setOpen, type, data, relatedData) => (
+    <IncomeForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  gradingScale: (setOpen, type, data, relatedData) => (
+    <GradingScaleForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
   ),
 };
 
@@ -122,10 +291,13 @@ const FormModal = ({
   const [open, setOpen] = useState(false);
 
   const Form = () => {
-    const [state, formAction] = useFormState(deleteActionMap[table], {
-      success: false,
-      error: false,
-    });
+    const [state, formAction] = useFormState(
+      deleteActionMap[table as keyof typeof deleteActionMap],
+      {
+        success: false,
+        error: false,
+      }
+    );
 
     const router = useRouter();
 

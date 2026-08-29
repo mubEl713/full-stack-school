@@ -3,24 +3,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
-import {
-  classSchema,
-  ClassSchema,
-  subjectSchema,
-  SubjectSchema,
-} from "@/lib/formValidationSchemas";
-import {
-  createClass,
-  createSubject,
-  updateClass,
-  updateSubject,
-} from "@/lib/actions";
-import { useFormState } from "react-dom";
 import { Dispatch, SetStateAction, useEffect } from "react";
-import { toast } from "react-toastify";
+import {
+  feeStructureSchema,
+  FeeStructureSchema,
+} from "@/lib/formValidationSchemas";
+import { useFormState } from "react-dom";
+import { createFeeStructure, updateFeeStructure } from "@/lib/actions";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
-const ClassForm = ({
+const TERMS = ["FIRST", "SECOND", "THIRD"];
+
+const FeeStructureForm = ({
   type,
   data,
   setOpen,
@@ -35,22 +30,16 @@ const ClassForm = ({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<ClassSchema>({
-    resolver: zodResolver(classSchema),
+  } = useForm<FeeStructureSchema>({
+    resolver: zodResolver(feeStructureSchema),
   });
 
-  // AFTER REACT 19 IT'LL BE USEACTIONSTATE
-
   const [state, formAction] = useFormState(
-    type === "create" ? createClass : updateClass,
-    {
-      success: false,
-      error: false,
-    }
+    type === "create" ? createFeeStructure : updateFeeStructure,
+    { success: false, error: false }
   );
 
   const onSubmit = handleSubmit((data) => {
-    console.log(data);
     formAction(data);
   });
 
@@ -58,41 +47,41 @@ const ClassForm = ({
 
   useEffect(() => {
     if (state.success) {
-      toast(`Subject has been ${type === "create" ? "created" : "updated"}!`);
+      toast(`Fee structure has been ${type === "create" ? "created" : "updated"}!`);
       setOpen(false);
       router.refresh();
     }
   }, [state, router, type, setOpen]);
 
-  const { teachers, grades } = relatedData;
+  const { grades } = relatedData;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
-        {type === "create" ? "Create a new class" : "Update the class"}
+        {type === "create" ? "Create a fee structure" : "Update the fee structure"}
       </h1>
-
       <div className="flex justify-between flex-wrap gap-4">
         <InputField
-          label="Class name"
+          label="Name"
           name="name"
           defaultValue={data?.name}
           register={register}
           error={errors?.name}
         />
         <InputField
-          label="Arm / Stream (e.g. A, B, C or Science, Art, Commercial)"
-          name="arm"
-          defaultValue={data?.arm}
+          label="Amount (₦)"
+          name="amount"
+          type="number"
+          defaultValue={data?.amount}
           register={register}
-          error={errors?.arm}
+          error={errors?.amount}
         />
         <InputField
-          label="Capacity"
-          name="capacity"
-          defaultValue={data?.capacity}
+          label="Session (e.g. 2025/2026)"
+          name="session"
+          defaultValue={data?.session}
           register={register}
-          error={errors?.capacity}
+          error={errors?.session}
         />
         {data && (
           <InputField
@@ -105,29 +94,18 @@ const ClassForm = ({
           />
         )}
         <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Supervisor</label>
+          <label className="text-xs text-gray-500">Term</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("supervisorId")}
-            defaultValue={data?.teachers}
+            {...register("term")}
+            defaultValue={data?.term}
           >
-            {teachers.map(
-              (teacher: { id: string; name: string; surname: string }) => (
-                <option
-                  value={teacher.id}
-                  key={teacher.id}
-                  selected={data && teacher.id === data.supervisorId}
-                >
-                  {teacher.name + " " + teacher.surname}
-                </option>
-              )
-            )}
+            {TERMS.map((term) => (
+              <option value={term} key={term}>
+                {term}
+              </option>
+            ))}
           </select>
-          {errors.supervisorId?.message && (
-            <p className="text-xs text-red-400">
-              {errors.supervisorId.message.toString()}
-            </p>
-          )}
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <label className="text-xs text-gray-500">Grade</label>
@@ -137,11 +115,7 @@ const ClassForm = ({
             defaultValue={data?.gradeId}
           >
             {grades.map((grade: { id: number; name: string }) => (
-              <option
-                value={grade.id}
-                key={grade.id}
-                selected={data && grade.id === data.gradeId}
-              >
+              <option value={grade.id} key={grade.id}>
                 {grade.name}
               </option>
             ))}
@@ -163,4 +137,4 @@ const ClassForm = ({
   );
 };
 
-export default ClassForm;
+export default FeeStructureForm;

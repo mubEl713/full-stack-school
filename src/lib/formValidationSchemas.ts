@@ -11,6 +11,7 @@ export type SubjectSchema = z.infer<typeof subjectSchema>;
 export const classSchema = z.object({
   id: z.coerce.number().optional(),
   name: z.string().min(1, { message: "Subject name is required!" }),
+  arm: z.string().min(1, { message: "Arm/stream is required!" }),
   capacity: z.coerce.number().min(1, { message: "Capacity name is required!" }),
   gradeId: z.coerce.number().min(1, { message: "Grade name is required!" }),
   supervisorId: z.coerce.string().optional(),
@@ -87,3 +88,149 @@ export const examSchema = z.object({
 });
 
 export type ExamSchema = z.infer<typeof examSchema>;
+
+const staffLoginFields = {
+  id: z.string().optional(),
+  username: z
+    .string()
+    .min(3, { message: "Username must be at least 3 characters long!" })
+    .max(20, { message: "Username must be at most 20 characters long!" }),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters long!" })
+    .optional()
+    .or(z.literal("")),
+  name: z.string().min(1, { message: "First name is required!" }),
+  surname: z.string().min(1, { message: "Last name is required!" }),
+  email: z
+    .string()
+    .email({ message: "Invalid email address!" })
+    .optional()
+    .or(z.literal("")),
+  phone: z.string().optional(),
+  address: z.string(),
+  img: z.string().optional(),
+};
+
+export const parentSchema = z.object(staffLoginFields);
+export type ParentSchema = z.infer<typeof parentSchema>;
+
+export const ownerSchema = z.object(staffLoginFields);
+export type OwnerSchema = z.infer<typeof ownerSchema>;
+
+export const accountantSchema = z.object(staffLoginFields);
+export type AccountantSchema = z.infer<typeof accountantSchema>;
+
+export const lessonSchema = z.object({
+  id: z.coerce.number().optional(),
+  name: z.string().min(1, { message: "Lesson name is required!" }),
+  day: z.enum(["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"], {
+    message: "Day is required!",
+  }),
+  startTime: z.coerce.date({ message: "Start time is required!" }),
+  endTime: z.coerce.date({ message: "End time is required!" }),
+  subjectId: z.coerce.number({ message: "Subject is required!" }),
+  classId: z.coerce.number({ message: "Class is required!" }),
+  teacherId: z.string({ message: "Teacher is required!" }),
+});
+export type LessonSchema = z.infer<typeof lessonSchema>;
+
+export const assignmentSchema = z.object({
+  id: z.coerce.number().optional(),
+  title: z.string().min(1, { message: "Title is required!" }),
+  startDate: z.coerce.date({ message: "Start date is required!" }),
+  dueDate: z.coerce.date({ message: "Due date is required!" }),
+  lessonId: z.coerce.number({ message: "Lesson is required!" }),
+});
+export type AssignmentSchema = z.infer<typeof assignmentSchema>;
+
+export const resultSchema = z.object({
+  id: z.coerce.number().optional(),
+  score: z.coerce
+    .number()
+    .min(0, { message: "Score must be at least 0!" })
+    .max(100, { message: "Score must be at most 100!" }),
+  studentId: z.string().min(1, { message: "Student is required!" }),
+  examId: z.coerce.number().optional(),
+  assignmentId: z.coerce.number().optional(),
+});
+export type ResultSchema = z.infer<typeof resultSchema>;
+
+export const attendanceSchema = z.object({
+  id: z.coerce.number().optional(),
+  date: z.coerce.date({ message: "Date is required!" }),
+  present: z.coerce.boolean(),
+  studentId: z.string().min(1, { message: "Student is required!" }),
+  lessonId: z.coerce.number({ message: "Lesson is required!" }),
+});
+export type AttendanceSchema = z.infer<typeof attendanceSchema>;
+
+export const eventSchema = z.object({
+  id: z.coerce.number().optional(),
+  title: z.string().min(1, { message: "Title is required!" }),
+  description: z.string().min(1, { message: "Description is required!" }),
+  startTime: z.coerce.date({ message: "Start time is required!" }),
+  endTime: z.coerce.date({ message: "End time is required!" }),
+  classId: z.coerce.number().optional(),
+});
+export type EventSchema = z.infer<typeof eventSchema>;
+
+export const announcementSchema = z.object({
+  id: z.coerce.number().optional(),
+  title: z.string().min(1, { message: "Title is required!" }),
+  description: z.string().min(1, { message: "Description is required!" }),
+  date: z.coerce.date({ message: "Date is required!" }),
+  classId: z.coerce.number().optional(),
+});
+export type AnnouncementSchema = z.infer<typeof announcementSchema>;
+
+export const feeStructureSchema = z.object({
+  id: z.coerce.number().optional(),
+  name: z.string().min(1, { message: "Name is required!" }),
+  amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
+  session: z.string().min(1, { message: "Session is required!" }),
+  term: z.enum(["FIRST", "SECOND", "THIRD"], { message: "Term is required!" }),
+  gradeId: z.coerce.number({ message: "Grade is required!" }),
+});
+export type FeeStructureSchema = z.infer<typeof feeStructureSchema>;
+
+export const feePaymentSchema = z.object({
+  id: z.coerce.number().optional(),
+  amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
+  date: z.coerce.date({ message: "Date is required!" }),
+  method: z.enum(["CASH", "BANK_TRANSFER", "CARD", "ONLINE"], {
+    message: "Method is required!",
+  }),
+  notes: z.string().optional(),
+  studentId: z.string().min(1, { message: "Student is required!" }),
+  feeStructureId: z.coerce.number({ message: "Fee structure is required!" }),
+});
+export type FeePaymentSchema = z.infer<typeof feePaymentSchema>;
+
+export const expenseSchema = z.object({
+  id: z.coerce.number().optional(),
+  category: z.string().min(1, { message: "Category is required!" }),
+  description: z.string().min(1, { message: "Description is required!" }),
+  amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
+  date: z.coerce.date({ message: "Date is required!" }),
+});
+export type ExpenseSchema = z.infer<typeof expenseSchema>;
+
+export const incomeSchema = z.object({
+  id: z.coerce.number().optional(),
+  source: z.string().min(1, { message: "Source is required!" }),
+  description: z.string().min(1, { message: "Description is required!" }),
+  amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
+  date: z.coerce.date({ message: "Date is required!" }),
+});
+export type IncomeSchema = z.infer<typeof incomeSchema>;
+
+export const gradingScaleSchema = z.object({
+  id: z.coerce.number().optional(),
+  grade: z.string().min(1, { message: "Grade label is required!" }),
+  minScore: z.coerce.number().min(0).max(100),
+  maxScore: z.coerce.number().min(0).max(100),
+  remark: z.string().min(1, { message: "Remark is required!" }),
+  order: z.coerce.number(),
+});
+export type GradingScaleSchema = z.infer<typeof gradingScaleSchema>;

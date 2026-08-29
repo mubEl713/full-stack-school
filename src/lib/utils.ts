@@ -1,3 +1,27 @@
+import { SchoolSection } from "@prisma/client";
+
+export const ARMS_BY_SECTION: Record<SchoolSection, string[]> = {
+  PRIMARY: ["A", "B", "C"],
+  JSS: ["A", "B", "C"],
+  SSS: ["Science", "Art", "Commercial"],
+};
+
+const SECTION_LABEL: Record<SchoolSection, string> = {
+  PRIMARY: "Primary",
+  JSS: "JSS",
+  SSS: "SS",
+};
+
+export const formatGradeName = (section: SchoolSection, level: number) =>
+  `${SECTION_LABEL[section]} ${level}`;
+
+export const getGradeForScore = <
+  T extends { minScore: number; maxScore: number; grade: string; remark: string }
+>(
+  score: number,
+  scales: T[]
+): T | undefined => scales.find((s) => score >= s.minScore && score <= s.maxScore);
+
 // IT APPEARS THAT BIG CALENDAR SHOWS THE LAST WEEK WHEN THE CURRENT DAY IS A WEEKEND.
 // FOR THIS REASON WE'LL GET THE LAST WEEK AS THE REFERENCE WEEK.
 // IN THE TUTORIAL WE'RE TAKING THE NEXT WEEK AS THE REFERENCE WEEK.
