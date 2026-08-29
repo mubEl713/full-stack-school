@@ -168,7 +168,6 @@ export const createTeacher = async (
       password: data.password,
       firstName: data.name,
       lastName: data.surname,
-      emailAddress: data.email ? [data.email] : undefined,
       publicMetadata:{role:"teacher"}
     });
 
@@ -291,7 +290,6 @@ export const createStudent = async (
       password: data.password,
       firstName: data.name,
       lastName: data.surname,
-      emailAddress: data.email ? [data.email] : undefined,
       publicMetadata:{role:"student"}
     });
 
@@ -510,7 +508,6 @@ export const createParent = async (
       password: data.password,
       firstName: data.name,
       lastName: data.surname,
-      emailAddress: data.email ? [data.email] : undefined,
       publicMetadata: { role: "parent" },
     });
 
@@ -596,7 +593,6 @@ export const createOwner = async (
       password: data.password,
       firstName: data.name,
       lastName: data.surname,
-      emailAddress: data.email ? [data.email] : undefined,
       publicMetadata: { role: "owner" },
     });
 
@@ -684,7 +680,6 @@ export const createAccountant = async (
       password: data.password,
       firstName: data.name,
       lastName: data.surname,
-      emailAddress: data.email ? [data.email] : undefined,
       publicMetadata: { role: "accountant" },
     });
 
