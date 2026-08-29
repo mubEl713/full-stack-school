@@ -57,6 +57,8 @@ model Student {
   attendances Attendance[]
   results     Result[]
   payments    FeePayment[]
+  invoices    Invoice[]
+  waivers     Waiver[]
   birthday    DateTime
 }
 
@@ -210,17 +212,87 @@ model Announcement {
 }
 
 model FeeStructure {
-  id       Int      @id @default(autoincrement())
-  name     String
-  amount   Float
-  session  String
-  term     Term
-  gradeId  Int
-  grade    Grade    @relation(fields: [gradeId], references: [id])
-  payments FeePayment[]
-  createdAt DateTime @default(now())
+  id      Int    @id @default(autoincrement())
+  name    String
+  amount  Float
+  session String
+  term    Term
+  category FeeCategory @default(TUITION)
+  dueDate  DateTime?
 
-  @@unique([gradeId, session, term])
+  earlyDiscountPercent  Float?
+  earlyDiscountDeadline DateTime?
+  latePenaltyPercent    Float?
+  latePenaltyGraceDays  Int?
+
+  gradeId   Int
+  grade     Grade        @relation(fields: [gradeId], references: [id])
+  payments  FeePayment[]
+  invoices  Invoice[]
+  createdAt DateTime     @default(now())
+
+  @@unique([gradeId, session, term, category])
+}
+
+model Invoice {
+  id             Int           @id @default(autoincrement())
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id])
+  feeStructureId Int
+  feeStructure   FeeStructure  @relation(fields: [feeStructureId], references: [id])
+  amountDue      Float
+  amountPaid     Float         @default(0)
+  status         InvoiceStatus @default(PENDING)
+  dueDate        DateTime
+  createdAt      DateTime      @default(now())
+  payments       FeePayment[]
+  installments   Installment[]
+
+  @@unique([studentId, feeStructureId])
+}
+
+model Installment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+  amount    Float
+  dueDate   DateTime
+  paid      Boolean  @default(false)
+  order     Int
+}
+
+model Waiver {
+  id           Int        @id @default(autoincrement())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  type         WaiverType
+  percent      Float?
+  fixedAmount  Float?
+  reason       String
+  approvedById String
+  session      String
+  createdAt    DateTime   @default(now())
+}
+
+model Refund {
+  id           Int        @id @default(autoincrement())
+  feePaymentId Int
+  feePayment   FeePayment @relation(fields: [feePaymentId], references: [id])
+  amount       Float
+  reason       String
+  approvedById String
+  createdAt    DateTime   @default(now())
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
 }
 
 model FeePayment {
@@ -233,6 +305,9 @@ model FeePayment {
   student        Student      @relation(fields: [studentId], references: [id])
   feeStructureId Int
   feeStructure   FeeStructure @relation(fields: [feeStructureId], references: [id])
+  invoiceId      Int?
+  invoice        Invoice?     @relation(fields: [invoiceId], references: [id])
+  refunds        Refund[]
   recordedById   String
   createdAt      DateTime     @default(now())
 }
@@ -295,6 +370,43 @@ enum AuditAction {
   CREATE
   UPDATE
   DELETE
+}
+
+enum FeeCategory {
+  TUITION
+  PTA_LEVY
+  DEVELOPMENT_LEVY
+  EXAM_FEE
+  TEXTBOOK
+  UNIFORM
+  FEEDING
+  BOARDING
+  TRANSPORT
+  SPORTS_LEVY
+  ICT_LEVY
+  OTHER
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+  WAIVED
+}
+
+enum WaiverType {
+  SCHOLARSHIP
+  STAFF_DISCOUNT
+  BURSARY
+  OTHER
+}
+
+enum NotificationType {
+  PAYMENT_CONFIRMATION
+  OVERDUE_REMINDER
+  LOW_COLLECTION_ALERT
+  GENERAL
 }
 
 enum UserSex {

@@ -12,8 +12,12 @@ import { useFormState } from "react-dom";
 import { createFeeStructure, updateFeeStructure } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { FEE_CATEGORY_LABEL } from "@/lib/utils";
 
 const TERMS = ["FIRST", "SECOND", "THIRD"];
+const CATEGORIES = Object.keys(FEE_CATEGORY_LABEL) as Array<
+  keyof typeof FEE_CATEGORY_LABEL
+>;
 
 const FeeStructureForm = ({
   type,
@@ -83,6 +87,46 @@ const FeeStructureForm = ({
           register={register}
           error={errors?.session}
         />
+        <InputField
+          label="Due Date"
+          name="dueDate"
+          type="date"
+          defaultValue={data?.dueDate?.toISOString?.().split("T")[0]}
+          register={register}
+          error={errors?.dueDate}
+        />
+        <InputField
+          label="Early Discount % (optional)"
+          name="earlyDiscountPercent"
+          type="number"
+          defaultValue={data?.earlyDiscountPercent}
+          register={register}
+          error={errors?.earlyDiscountPercent}
+        />
+        <InputField
+          label="Early Discount Deadline (optional)"
+          name="earlyDiscountDeadline"
+          type="date"
+          defaultValue={data?.earlyDiscountDeadline?.toISOString?.().split("T")[0]}
+          register={register}
+          error={errors?.earlyDiscountDeadline}
+        />
+        <InputField
+          label="Late Penalty % (optional)"
+          name="latePenaltyPercent"
+          type="number"
+          defaultValue={data?.latePenaltyPercent}
+          register={register}
+          error={errors?.latePenaltyPercent}
+        />
+        <InputField
+          label="Late Penalty Grace Days (optional)"
+          name="latePenaltyGraceDays"
+          type="number"
+          defaultValue={data?.latePenaltyGraceDays}
+          register={register}
+          error={errors?.latePenaltyGraceDays}
+        />
         {data && (
           <InputField
             label="Id"
@@ -103,6 +147,20 @@ const FeeStructureForm = ({
             {TERMS.map((term) => (
               <option value={term} key={term}>
                 {term}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-2 w-full md:w-1/4">
+          <label className="text-xs text-gray-500">Category</label>
+          <select
+            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
+            {...register("category")}
+            defaultValue={data?.category}
+          >
+            {CATEGORIES.map((cat) => (
+              <option value={cat} key={cat}>
+                {FEE_CATEGORY_LABEL[cat]}
               </option>
             ))}
           </select>

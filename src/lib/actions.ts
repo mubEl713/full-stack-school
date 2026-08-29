@@ -17,10 +17,12 @@ import {
   LessonSchema,
   OwnerSchema,
   ParentSchema,
+  RefundSchema,
   ResultSchema,
   StudentSchema,
   SubjectSchema,
   TeacherSchema,
+  WaiverSchema,
 } from "./formValidationSchemas";
 import prisma from "./prisma";
 import { clerkClient, auth } from "@clerk/nextjs/server";
@@ -1104,15 +1106,69 @@ export const deleteFeeStructure = async (
 
 // ---------- FEE PAYMENT ----------
 
+const recomputeInvoiceStatus = (amountDue: number, amountPaid: number) => {
+  if (amountPaid <= 0) return "PENDING" as const;
+  if (amountPaid >= amountDue) return "PAID" as const;
+  return "PARTIAL" as const;
+};
+
 export const createFeePayment = async (
   currentState: CurrentState,
   data: FeePaymentSchema
 ) => {
   try {
     const { userId } = auth();
-    const payment = await prisma.feePayment.create({
-      data: { ...data, recordedById: userId || "unknown" },
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: data.invoiceId },
+      include: { student: true, feeStructure: true },
     });
+    if (!invoice) return { success: false, error: true };
+
+    const payment = await prisma.$transaction(async (tx) => {
+      const created = await tx.feePayment.create({
+        data: {
+          amount: data.amount,
+          date: data.date,
+          method: data.method,
+          notes: data.notes,
+          studentId: invoice.studentId,
+          feeStructureId: invoice.feeStructureId,
+          invoiceId: invoice.id,
+          recordedById: userId || "unknown",
+        },
+      });
+
+      const newAmountPaid = invoice.amountPaid + data.amount;
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          amountPaid: newAmountPaid,
+          status: recomputeInvoiceStatus(invoice.amountDue, newAmountPaid),
+        },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: invoice.student.parentId,
+          title: "Payment received",
+          message: `A payment of ₦${data.amount.toLocaleString()} was recorded for ${invoice.student.name} ${invoice.student.surname} (${invoice.feeStructure.name}).`,
+          type: "PAYMENT_CONFIRMATION",
+          link: `/statements/${invoice.studentId}`,
+        },
+      });
+      await tx.notification.create({
+        data: {
+          userId: invoice.studentId,
+          title: "Payment received",
+          message: `Your payment of ₦${data.amount.toLocaleString()} for ${invoice.feeStructure.name} was recorded.`,
+          type: "PAYMENT_CONFIRMATION",
+          link: `/statements/${invoice.studentId}`,
+        },
+      });
+
+      return created;
+    });
+
     await logAudit("CREATE", "FeePayment", payment.id, data);
     return { success: true, error: false };
   } catch (err) {
@@ -1127,7 +1183,40 @@ export const updateFeePayment = async (
 ) => {
   if (!data.id) return { success: false, error: true };
   try {
-    await prisma.feePayment.update({ where: { id: data.id }, data });
+    const existing = await prisma.feePayment.findUnique({
+      where: { id: data.id },
+    });
+    if (!existing) return { success: false, error: true };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.feePayment.update({
+        where: { id: data.id },
+        data: {
+          amount: data.amount,
+          date: data.date,
+          method: data.method,
+          notes: data.notes,
+        },
+      });
+
+      if (existing.invoiceId) {
+        const invoice = await tx.invoice.findUnique({
+          where: { id: existing.invoiceId },
+        });
+        if (invoice) {
+          const newAmountPaid =
+            invoice.amountPaid - existing.amount + data.amount;
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              amountPaid: newAmountPaid,
+              status: recomputeInvoiceStatus(invoice.amountDue, newAmountPaid),
+            },
+          });
+        }
+      }
+    });
+
     await logAudit("UPDATE", "FeePayment", data.id, data);
     return { success: true, error: false };
   } catch (err) {
@@ -1142,7 +1231,34 @@ export const deleteFeePayment = async (
 ) => {
   const id = data.get("id") as string;
   try {
-    await prisma.feePayment.delete({ where: { id: parseInt(id) } });
+    const existing = await prisma.feePayment.findUnique({
+      where: { id: parseInt(id) },
+    });
+    if (!existing) return { success: false, error: true };
+
+    await prisma.$transaction(async (tx) => {
+      await tx.feePayment.delete({ where: { id: parseInt(id) } });
+
+      if (existing.invoiceId) {
+        const invoice = await tx.invoice.findUnique({
+          where: { id: existing.invoiceId },
+        });
+        if (invoice) {
+          const newAmountPaid = Math.max(
+            invoice.amountPaid - existing.amount,
+            0
+          );
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              amountPaid: newAmountPaid,
+              status: recomputeInvoiceStatus(invoice.amountDue, newAmountPaid),
+            },
+          });
+        }
+      }
+    });
+
     await logAudit("DELETE", "FeePayment", id);
     return { success: true, error: false };
   } catch (err) {
@@ -1150,6 +1266,378 @@ export const deleteFeePayment = async (
     return { success: false, error: true };
   }
 };
+
+// ---------- INVOICE GENERATION ----------
+
+export const generateInvoices = async (
+  currentState: CurrentState,
+  data: { feeStructureId: number }
+) => {
+  try {
+    const feeStructure = await prisma.feeStructure.findUnique({
+      where: { id: data.feeStructureId },
+      include: { grade: { include: { students: true } } },
+    });
+    if (!feeStructure) return { success: false, error: true };
+
+    let created = 0;
+    for (const student of feeStructure.grade.students) {
+      const existing = await prisma.invoice.findUnique({
+        where: {
+          studentId_feeStructureId: {
+            studentId: student.id,
+            feeStructureId: feeStructure.id,
+          },
+        },
+      });
+      if (existing) continue;
+
+      const waiver = await prisma.waiver.findFirst({
+        where: { studentId: student.id, session: feeStructure.session },
+      });
+
+      let amountDue = feeStructure.amount;
+      if (waiver?.percent) {
+        amountDue = amountDue * (1 - waiver.percent / 100);
+      } else if (waiver?.fixedAmount) {
+        amountDue = Math.max(amountDue - waiver.fixedAmount, 0);
+      }
+
+      const invoice = await prisma.invoice.create({
+        data: {
+          studentId: student.id,
+          feeStructureId: feeStructure.id,
+          amountDue: Math.round(amountDue * 100) / 100,
+          dueDate: feeStructure.dueDate || new Date(),
+          status: waiver && amountDue === 0 ? "WAIVED" : "PENDING",
+        },
+      });
+      await logAudit("CREATE", "Invoice", invoice.id, {
+        studentId: student.id,
+        feeStructureId: feeStructure.id,
+      });
+      created++;
+    }
+
+    return { success: true, error: false, created };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+// ---------- INSTALLMENT PLAN ----------
+
+export const createInstallmentPlan = async (
+  currentState: CurrentState,
+  data: { invoiceId: number; parts: number }
+) => {
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: data.invoiceId },
+    });
+    if (!invoice) return { success: false, error: true };
+
+    const outstanding = invoice.amountDue - invoice.amountPaid;
+    const partAmount = Math.round((outstanding / data.parts) * 100) / 100;
+    const daySpacing = 30;
+
+    await prisma.$transaction(
+      Array.from({ length: data.parts }).map((_, i) =>
+        prisma.installment.create({
+          data: {
+            invoiceId: invoice.id,
+            amount:
+              i === data.parts - 1
+                ? Math.round((outstanding - partAmount * i) * 100) / 100
+                : partAmount,
+            dueDate: new Date(
+              invoice.dueDate.getTime() + i * daySpacing * 24 * 60 * 60 * 1000
+            ),
+            order: i + 1,
+          },
+        })
+      )
+    );
+
+    await logAudit("CREATE", "InstallmentPlan", invoice.id, data);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+// ---------- WAIVER ----------
+
+export const createWaiver = async (
+  currentState: CurrentState,
+  data: WaiverSchema
+) => {
+  try {
+    const { userId } = auth();
+    const waiver = await prisma.waiver.create({
+      data: { ...data, approvedById: userId || "unknown" },
+    });
+    await logAudit("CREATE", "Waiver", waiver.id, data);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const updateWaiver = async (
+  currentState: CurrentState,
+  data: WaiverSchema
+) => {
+  if (!data.id) return { success: false, error: true };
+  try {
+    await prisma.waiver.update({ where: { id: data.id }, data });
+    await logAudit("UPDATE", "Waiver", data.id, data);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const deleteWaiver = async (
+  currentState: CurrentState,
+  data: FormData
+) => {
+  const id = data.get("id") as string;
+  try {
+    await prisma.waiver.delete({ where: { id: parseInt(id) } });
+    await logAudit("DELETE", "Waiver", id);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+// ---------- REFUND ----------
+
+export const createRefund = async (
+  currentState: CurrentState,
+  data: RefundSchema
+) => {
+  try {
+    const { userId } = auth();
+    const refund = await prisma.$transaction(async (tx) => {
+      const created = await tx.refund.create({
+        data: { ...data, approvedById: userId || "unknown" },
+      });
+      const payment = await tx.feePayment.findUnique({
+        where: { id: data.feePaymentId },
+      });
+      if (payment?.invoiceId) {
+        const invoice = await tx.invoice.findUnique({
+          where: { id: payment.invoiceId },
+        });
+        if (invoice) {
+          const newAmountPaid = Math.max(
+            invoice.amountPaid - data.amount,
+            0
+          );
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              amountPaid: newAmountPaid,
+              status: recomputeInvoiceStatus(invoice.amountDue, newAmountPaid),
+            },
+          });
+        }
+      }
+      return created;
+    });
+    await logAudit("CREATE", "Refund", refund.id, data);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const updateRefund = async (
+  currentState: CurrentState,
+  data: RefundSchema
+) => {
+  if (!data.id) return { success: false, error: true };
+  try {
+    await prisma.refund.update({
+      where: { id: data.id },
+      data: { amount: data.amount, reason: data.reason },
+    });
+    await logAudit("UPDATE", "Refund", data.id, data);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const deleteRefund = async (
+  currentState: CurrentState,
+  data: FormData
+) => {
+  const id = data.get("id") as string;
+  try {
+    await prisma.refund.delete({ where: { id: parseInt(id) } });
+    await logAudit("DELETE", "Refund", id);
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+// ---------- NOTIFICATIONS ----------
+
+export const markNotificationRead = async (id: number) => {
+  try {
+    await prisma.notification.update({ where: { id }, data: { read: true } });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const markAllNotificationsRead = async () => {
+  try {
+    const { userId } = auth();
+    if (!userId) return { success: false, error: true };
+    await prisma.notification.updateMany({
+      where: { userId, read: false },
+      data: { read: true },
+    });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+// ---------- REMINDERS ----------
+
+const LOW_COLLECTION_THRESHOLD = 0.5;
+
+export const sendOverdueReminders = async () => {
+  try {
+    const now = new Date();
+    const overdueInvoices = await prisma.invoice.findMany({
+      where: {
+        status: { in: ["PENDING", "PARTIAL"] },
+        dueDate: { lt: now },
+      },
+      include: { student: true, feeStructure: true },
+    });
+
+    let remindersSent = 0;
+    for (const invoice of overdueInvoices) {
+      const daysOverdue = Math.floor(
+        (now.getTime() - invoice.dueDate.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      const outstanding = invoice.amountDue - invoice.amountPaid;
+      const tone =
+        daysOverdue > 14
+          ? "This is a firm notice"
+          : "This is a friendly reminder";
+
+      await prisma.notification.create({
+        data: {
+          userId: invoice.student.parentId,
+          title: `Overdue: ${invoice.feeStructure.name}`,
+          message: `${tone} that ₦${outstanding.toLocaleString()} for ${
+            invoice.student.name
+          } ${invoice.student.surname}'s ${
+            invoice.feeStructure.name
+          } is ${daysOverdue} day(s) overdue.`,
+          type: "OVERDUE_REMINDER",
+          link: `/statements/${invoice.studentId}`,
+        },
+      });
+      remindersSent++;
+    }
+
+    // Low-collection alert per grade
+    const grades = await prisma.grade.findMany({
+      include: {
+        feeStructures: {
+          include: { invoices: true },
+        },
+      },
+    });
+    for (const grade of grades) {
+      const invoices = grade.feeStructures.flatMap((fs) => fs.invoices);
+      if (invoices.length === 0) continue;
+      const totalDue = invoices.reduce((s, i) => s + i.amountDue, 0);
+      const totalPaid = invoices.reduce((s, i) => s + i.amountPaid, 0);
+      const rate = totalDue > 0 ? totalPaid / totalDue : 1;
+      if (rate < LOW_COLLECTION_THRESHOLD) {
+        const staff = await prisma.owner.findMany({ select: { id: true } });
+        const accountants = await prisma.accountant.findMany({
+          select: { id: true },
+        });
+        for (const person of [...staff, ...accountants]) {
+          await prisma.notification.create({
+            data: {
+              userId: person.id,
+              title: `Low collection: ${formatGradeNameServer(grade)}`,
+              message: `Collection rate for ${formatGradeNameServer(
+                grade
+              )} is ${Math.round(rate * 100)}%, below the ${Math.round(
+                LOW_COLLECTION_THRESHOLD * 100
+              )}% threshold.`,
+              type: "LOW_COLLECTION_ALERT",
+              link: "/accounting",
+            },
+          });
+        }
+      }
+    }
+
+    return { success: true, error: false, remindersSent };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+export const sendSingleReminder = async (invoiceId: number) => {
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { student: true, feeStructure: true },
+    });
+    if (!invoice) return { success: false, error: true };
+
+    const outstanding = invoice.amountDue - invoice.amountPaid;
+    await prisma.notification.create({
+      data: {
+        userId: invoice.student.parentId,
+        title: `Reminder: ${invoice.feeStructure.name}`,
+        message: `Please note ₦${outstanding.toLocaleString()} is still outstanding for ${invoice.student.name} ${invoice.student.surname}'s ${invoice.feeStructure.name}.`,
+        type: "OVERDUE_REMINDER",
+        link: `/statements/${invoice.studentId}`,
+      },
+    });
+    return { success: true, error: false };
+  } catch (err) {
+    console.log(err);
+    return { success: false, error: true };
+  }
+};
+
+const SECTION_LABEL_SERVER: Record<string, string> = {
+  PRIMARY: "Primary",
+  JSS: "JSS",
+  SSS: "SS",
+};
+const formatGradeNameServer = (grade: { section: string; level: number }) =>
+  `${SECTION_LABEL_SERVER[grade.section]} ${grade.level}`;
 
 // ---------- EXPENSE ----------
 

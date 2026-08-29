@@ -97,11 +97,64 @@ const menuItems = [
         href: "/list/announcements",
         visible: ["admin", "owner", "teacher", "student", "parent"],
       },
+    ],
+  },
+  {
+    title: "ACCOUNTING",
+    items: [
       {
         icon: "/finance.png",
-        label: "Accounting",
+        label: "Dashboard",
         href: "/accounting",
         visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Fee Structures",
+        href: "/list/fee-structures",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Invoices",
+        href: "/list/invoices",
+        visible: ["admin", "owner", "accountant", "teacher"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Fee Payments",
+        href: "/list/fee-payments",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Waivers",
+        href: "/list/waivers",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Refunds",
+        href: "/list/refunds",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Expenses",
+        href: "/list/expenses",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/finance.png",
+        label: "Income",
+        href: "/list/income",
+        visible: ["admin", "owner", "accountant"],
+      },
+      {
+        icon: "/result.png",
+        label: "Grading Scale",
+        href: "/list/grading-scale",
+        visible: ["admin"],
       },
       {
         icon: "/setting.png",

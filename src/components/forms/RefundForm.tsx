@@ -4,18 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import InputField from "../InputField";
 import { Dispatch, SetStateAction, useEffect } from "react";
-import {
-  feePaymentSchema,
-  FeePaymentSchema,
-} from "@/lib/formValidationSchemas";
+import { refundSchema, RefundSchema } from "@/lib/formValidationSchemas";
 import { useFormState } from "react-dom";
-import { createFeePayment, updateFeePayment } from "@/lib/actions";
+import { createRefund, updateRefund } from "@/lib/actions";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
-const METHODS = ["CASH", "BANK_TRANSFER", "CARD", "ONLINE"];
-
-const FeePaymentForm = ({
+const RefundForm = ({
   type,
   data,
   setOpen,
@@ -30,12 +25,12 @@ const FeePaymentForm = ({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FeePaymentSchema>({
-    resolver: zodResolver(feePaymentSchema),
+  } = useForm<RefundSchema>({
+    resolver: zodResolver(refundSchema),
   });
 
   const [state, formAction] = useFormState(
-    type === "create" ? createFeePayment : updateFeePayment,
+    type === "create" ? createRefund : updateRefund,
     { success: false, error: false }
   );
 
@@ -47,18 +42,18 @@ const FeePaymentForm = ({
 
   useEffect(() => {
     if (state.success) {
-      toast(`Payment has been ${type === "create" ? "recorded" : "updated"}!`);
+      toast(`Refund has been ${type === "create" ? "created" : "updated"}!`);
       setOpen(false);
       router.refresh();
     }
   }, [state, router, type, setOpen]);
 
-  const { invoices } = relatedData;
+  const { payments } = relatedData;
 
   return (
     <form className="flex flex-col gap-8" onSubmit={onSubmit}>
       <h1 className="text-xl font-semibold">
-        {type === "create" ? "Record a fee payment" : "Update the payment"}
+        {type === "create" ? "Record a refund" : "Update the refund"}
       </h1>
       <div className="flex justify-between flex-wrap gap-4">
         <InputField
@@ -70,19 +65,11 @@ const FeePaymentForm = ({
           error={errors?.amount}
         />
         <InputField
-          label="Date"
-          name="date"
-          type="date"
-          defaultValue={data?.date?.toISOString?.().split("T")[0]}
+          label="Reason"
+          name="reason"
+          defaultValue={data?.reason}
           register={register}
-          error={errors?.date}
-        />
-        <InputField
-          label="Notes (optional)"
-          name="notes"
-          defaultValue={data?.notes}
-          register={register}
-          error={errors?.notes as any}
+          error={errors?.reason}
         />
         {data && (
           <InputField
@@ -94,46 +81,29 @@ const FeePaymentForm = ({
             hidden
           />
         )}
-        <div className="flex flex-col gap-2 w-full md:w-1/4">
-          <label className="text-xs text-gray-500">Method</label>
+        <div className="flex flex-col gap-2 w-full md:w-1/3">
+          <label className="text-xs text-gray-500">Original Payment</label>
           <select
             className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("method")}
-            defaultValue={data?.method}
+            {...register("feePaymentId")}
+            defaultValue={data?.feePaymentId}
           >
-            {METHODS.map((m) => (
-              <option value={m} key={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-2 w-full md:w-1/2">
-          <label className="text-xs text-gray-500">Invoice</label>
-          <select
-            className="ring-[1.5px] ring-gray-300 p-2 rounded-md text-sm w-full"
-            {...register("invoiceId")}
-            defaultValue={data?.invoiceId}
-          >
-            {invoices.map(
-              (invoice: {
+            {payments.map(
+              (payment: {
                 id: number;
-                amountDue: number;
-                amountPaid: number;
+                amount: number;
                 student: { name: string; surname: string };
-                feeStructure: { name: string };
               }) => (
-                <option value={invoice.id} key={invoice.id}>
-                  {invoice.student.name} {invoice.student.surname} —{" "}
-                  {invoice.feeStructure.name} (Outstanding: ₦
-                  {(invoice.amountDue - invoice.amountPaid).toLocaleString()})
+                <option value={payment.id} key={payment.id}>
+                  {payment.student.name} {payment.student.surname} — ₦
+                  {payment.amount.toLocaleString()}
                 </option>
               )
             )}
           </select>
-          {errors.invoiceId?.message && (
+          {errors.feePaymentId?.message && (
             <p className="text-xs text-red-400">
-              {errors.invoiceId.message.toString()}
+              {errors.feePaymentId.message.toString()}
             </p>
           )}
         </div>
@@ -148,4 +118,4 @@ const FeePaymentForm = ({
   );
 };
 
-export default FeePaymentForm;
+export default RefundForm;

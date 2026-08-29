@@ -184,12 +184,33 @@ export const announcementSchema = z.object({
 });
 export type AnnouncementSchema = z.infer<typeof announcementSchema>;
 
+const FEE_CATEGORY_VALUES = [
+  "TUITION",
+  "PTA_LEVY",
+  "DEVELOPMENT_LEVY",
+  "EXAM_FEE",
+  "TEXTBOOK",
+  "UNIFORM",
+  "FEEDING",
+  "BOARDING",
+  "TRANSPORT",
+  "SPORTS_LEVY",
+  "ICT_LEVY",
+  "OTHER",
+] as const;
+
 export const feeStructureSchema = z.object({
   id: z.coerce.number().optional(),
   name: z.string().min(1, { message: "Name is required!" }),
   amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
   session: z.string().min(1, { message: "Session is required!" }),
   term: z.enum(["FIRST", "SECOND", "THIRD"], { message: "Term is required!" }),
+  category: z.enum(FEE_CATEGORY_VALUES, { message: "Category is required!" }),
+  dueDate: z.coerce.date({ message: "Due date is required!" }),
+  earlyDiscountPercent: z.coerce.number().min(0).max(100).optional(),
+  earlyDiscountDeadline: z.coerce.date().optional(),
+  latePenaltyPercent: z.coerce.number().min(0).max(100).optional(),
+  latePenaltyGraceDays: z.coerce.number().int().min(0).optional(),
   gradeId: z.coerce.number({ message: "Grade is required!" }),
 });
 export type FeeStructureSchema = z.infer<typeof feeStructureSchema>;
@@ -202,10 +223,41 @@ export const feePaymentSchema = z.object({
     message: "Method is required!",
   }),
   notes: z.string().optional(),
-  studentId: z.string().min(1, { message: "Student is required!" }),
-  feeStructureId: z.coerce.number({ message: "Fee structure is required!" }),
+  invoiceId: z.coerce.number({ message: "Invoice is required!" }),
 });
 export type FeePaymentSchema = z.infer<typeof feePaymentSchema>;
+
+export const generateInvoicesSchema = z.object({
+  feeStructureId: z.coerce.number({ message: "Fee structure is required!" }),
+});
+export type GenerateInvoicesSchema = z.infer<typeof generateInvoicesSchema>;
+
+export const installmentPlanSchema = z.object({
+  invoiceId: z.coerce.number({ message: "Invoice is required!" }),
+  parts: z.coerce.number().int().min(2).max(12),
+});
+export type InstallmentPlanSchema = z.infer<typeof installmentPlanSchema>;
+
+export const waiverSchema = z.object({
+  id: z.coerce.number().optional(),
+  studentId: z.string().min(1, { message: "Student is required!" }),
+  type: z.enum(["SCHOLARSHIP", "STAFF_DISCOUNT", "BURSARY", "OTHER"], {
+    message: "Type is required!",
+  }),
+  percent: z.coerce.number().min(0).max(100).optional(),
+  fixedAmount: z.coerce.number().positive().optional(),
+  reason: z.string().min(1, { message: "Reason is required!" }),
+  session: z.string().min(1, { message: "Session is required!" }),
+});
+export type WaiverSchema = z.infer<typeof waiverSchema>;
+
+export const refundSchema = z.object({
+  id: z.coerce.number().optional(),
+  feePaymentId: z.coerce.number({ message: "Payment is required!" }),
+  amount: z.coerce.number().positive({ message: "Amount must be positive!" }),
+  reason: z.string().min(1, { message: "Reason is required!" }),
+});
+export type RefundSchema = z.infer<typeof refundSchema>;
 
 export const expenseSchema = z.object({
   id: z.coerce.number().optional(),

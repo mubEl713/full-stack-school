@@ -23,7 +23,9 @@ export type FormContainerProps = {
     | "feePayment"
     | "expense"
     | "income"
-    | "gradingScale";
+    | "gradingScale"
+    | "waiver"
+    | "refund";
   type: "create" | "update" | "delete";
   data?: any;
   id?: number | string;
@@ -164,18 +166,28 @@ const FormContainer = async ({ table, type, data, id }: FormContainerProps) => {
         };
         break;
       case "feePayment":
-        const [feePaymentStudents, feeStructures] = await Promise.all([
-          prisma.student.findMany({
-            select: { id: true, name: true, surname: true },
-          }),
-          prisma.feeStructure.findMany({
-            select: { id: true, name: true, amount: true },
-          }),
-        ]);
-        relatedData = {
-          students: feePaymentStudents,
-          feeStructures,
-        };
+        const paymentInvoices = await prisma.invoice.findMany({
+          where: { status: { in: ["PENDING", "PARTIAL", "OVERDUE"] } },
+          include: {
+            student: { select: { name: true, surname: true } },
+            feeStructure: { select: { name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        relatedData = { invoices: paymentInvoices };
+        break;
+      case "waiver":
+        const waiverStudents = await prisma.student.findMany({
+          select: { id: true, name: true, surname: true },
+        });
+        relatedData = { students: waiverStudents };
+        break;
+      case "refund":
+        const refundPayments = await prisma.feePayment.findMany({
+          include: { student: { select: { name: true, surname: true } } },
+          orderBy: { date: "desc" },
+        });
+        relatedData = { payments: refundPayments };
         break;
 
       default:

@@ -1,5 +1,6 @@
 import Announcements from "@/components/Announcements";
 import BigCalendarContainer from "@/components/BigCalendarContainer";
+import MyChildrenFeesCard from "@/components/MyChildrenFeesCard";
 import prisma from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 
@@ -31,6 +32,7 @@ const ParentPage = async () => {
       </div>
       {/* RIGHT */}
       <div className="w-full xl:w-1/3 flex flex-col gap-8">
+        <MyChildrenFeesCard parentId={currentUserId!} />
         <Announcements />
       </div>
     </div>

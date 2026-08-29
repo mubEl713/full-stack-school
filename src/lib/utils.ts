@@ -1,4 +1,4 @@
-import { SchoolSection } from "@prisma/client";
+import { FeeCategory, SchoolSection } from "@prisma/client";
 
 export const ARMS_BY_SECTION: Record<SchoolSection, string[]> = {
   PRIMARY: ["A", "B", "C"],
@@ -14,6 +14,78 @@ const SECTION_LABEL: Record<SchoolSection, string> = {
 
 export const formatGradeName = (section: SchoolSection, level: number) =>
   `${SECTION_LABEL[section]} ${level}`;
+
+export const FEE_CATEGORY_LABEL: Record<FeeCategory, string> = {
+  TUITION: "Tuition",
+  PTA_LEVY: "PTA Levy",
+  DEVELOPMENT_LEVY: "Development Levy",
+  EXAM_FEE: "Exam Fee",
+  TEXTBOOK: "Textbook",
+  UNIFORM: "Uniform",
+  FEEDING: "Feeding",
+  BOARDING: "Boarding",
+  TRANSPORT: "Transport",
+  SPORTS_LEVY: "Sports Levy",
+  ICT_LEVY: "ICT Levy",
+  OTHER: "Other",
+};
+
+export const formatNaira = (amount: number) =>
+  `₦${amount.toLocaleString("en-NG", { maximumFractionDigits: 2 })}`;
+
+type FeeStructureLike = {
+  earlyDiscountPercent?: number | null;
+  earlyDiscountDeadline?: Date | null;
+  latePenaltyPercent?: number | null;
+  latePenaltyGraceDays?: number | null;
+  dueDate?: Date | null;
+};
+
+/**
+ * Computes what a student effectively owes on an invoice as of a given date,
+ * applying the fee structure's early-payment discount or late-payment
+ * penalty. This is a DISPLAY calculation only — the stored Invoice.amountDue
+ * stays the canonical post-waiver base amount; this never mutates it.
+ */
+export const getEffectiveAmountOwed = (
+  baseAmountDue: number,
+  feeStructure: FeeStructureLike,
+  asOfDate: Date = new Date()
+): { amount: number; note?: string } => {
+  const {
+    earlyDiscountPercent,
+    earlyDiscountDeadline,
+    latePenaltyPercent,
+    latePenaltyGraceDays,
+    dueDate,
+  } = feeStructure;
+
+  if (
+    earlyDiscountPercent &&
+    earlyDiscountDeadline &&
+    asOfDate <= earlyDiscountDeadline
+  ) {
+    const discounted = baseAmountDue * (1 - earlyDiscountPercent / 100);
+    return {
+      amount: Math.round(discounted * 100) / 100,
+      note: `${earlyDiscountPercent}% early-payment discount applied`,
+    };
+  }
+
+  if (latePenaltyPercent && dueDate) {
+    const graceMs = (latePenaltyGraceDays || 0) * 24 * 60 * 60 * 1000;
+    const penaltyStart = new Date(dueDate.getTime() + graceMs);
+    if (asOfDate > penaltyStart) {
+      const penalized = baseAmountDue * (1 + latePenaltyPercent / 100);
+      return {
+        amount: Math.round(penalized * 100) / 100,
+        note: `${latePenaltyPercent}% late-payment penalty applied`,
+      };
+    }
+  }
+
+  return { amount: baseAmountDue };
+};
 
 export const getGradeForScore = <
   T extends { minScore: number; maxScore: number; grade: string; remark: string }

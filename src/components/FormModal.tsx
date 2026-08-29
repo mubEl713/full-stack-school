@@ -16,10 +16,12 @@ import {
   deleteLesson,
   deleteOwner,
   deleteParent,
+  deleteRefund,
   deleteResult,
   deleteStudent,
   deleteSubject,
   deleteTeacher,
+  deleteWaiver,
 } from "@/lib/actions";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -49,6 +51,8 @@ const deleteActionMap = {
   expense: deleteExpense,
   income: deleteIncome,
   gradingScale: deleteGradingScale,
+  waiver: deleteWaiver,
+  refund: deleteRefund,
 };
 
 // USE LAZY LOADING
@@ -108,6 +112,12 @@ const IncomeForm = dynamic(() => import("./forms/IncomeForm"), {
   loading: () => <h1>Loading...</h1>,
 });
 const GradingScaleForm = dynamic(() => import("./forms/GradingScaleForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const WaiverForm = dynamic(() => import("./forms/WaiverForm"), {
+  loading: () => <h1>Loading...</h1>,
+});
+const RefundForm = dynamic(() => import("./forms/RefundForm"), {
   loading: () => <h1>Loading...</h1>,
 });
 
@@ -265,6 +275,22 @@ const forms: {
   ),
   gradingScale: (setOpen, type, data, relatedData) => (
     <GradingScaleForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  waiver: (setOpen, type, data, relatedData) => (
+    <WaiverForm
+      type={type}
+      data={data}
+      setOpen={setOpen}
+      relatedData={relatedData}
+    />
+  ),
+  refund: (setOpen, type, data, relatedData) => (
+    <RefundForm
       type={type}
       data={data}
       setOpen={setOpen}
