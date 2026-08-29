@@ -1,5 +1,5 @@
 import Image from "next/image";
-import CountChart from "./CountChart";
+import CountChart from "./CountChartClient";
 import prisma from "@/lib/prisma";
 
 const CountChartContainer = async () => {

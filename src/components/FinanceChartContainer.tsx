@@ -1,5 +1,5 @@
 import prisma from "@/lib/prisma";
-import FinanceChart from "./FinanceChart";
+import FinanceChart from "./FinanceChartClient";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",

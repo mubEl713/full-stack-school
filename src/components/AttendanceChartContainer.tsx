@@ -1,5 +1,5 @@
 import Image from "next/image";
-import AttendanceChart from "./AttendanceChart";
+import AttendanceChart from "./AttendanceChartClient";
 import prisma from "@/lib/prisma";
 
 const AttendanceChartContainer = async () => {
