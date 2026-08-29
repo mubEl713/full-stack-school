@@ -8,7 +8,7 @@ import { Class, Prisma, Teacher } from "@prisma/client";
 import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 
-type ClassList = Class & { supervisor: Teacher };
+type ClassList = Class & { supervisor: Teacher | null };
 
 const ClassListPage = async ({
   searchParams,
@@ -59,7 +59,9 @@ const renderRow = (item: ClassList) => (
     <td className="hidden md:table-cell">{item.capacity}</td>
     <td className="hidden md:table-cell">{item.arm}</td>
     <td className="hidden md:table-cell">
-      {item.supervisor.name + " " + item.supervisor.surname}
+      {item.supervisor
+        ? item.supervisor.name + " " + item.supervisor.surname
+        : "—"}
     </td>
     <td>
       <div className="flex items-center gap-2">
